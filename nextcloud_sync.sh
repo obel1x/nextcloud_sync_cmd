@@ -1,22 +1,18 @@
 #!/bin/bash
-#Sync Folders in nextcloud
-#This script can be set as Userlogon- and Logoff-script in your display manager
-#e.g. if you use sddm and kde/plasma5 you may specify it in autostart/system settings
+#Sync some Folder in Batch
 #
-# for logoff use "Add script" to this script and select logoff as executiontime
-# for logon use "Add program" an make the terminal stay open
-#
+myidentitiy='Mozilla-Profile' #short Name for this job
 logfile=~/nextcloudcmd_sync.log # Logfile-Name
+localpath=~/.mozilla # set to path of mozilla (~ needs to be without ")
 protocol="https://" # https:// or http://
-localprofile=~/.mozilla # set to local path (~ needs to be without ")
-serverpath="@server.com/nextcloud/remote.php/webdav/directorytosync" #@server/webpath to profile in nextcloud
-username="user123"
-password="xxx"
+serverpath="@obel1x.de/owncloud/remote.php/webdav/mozillaprofil_nach_home_.mozilla" #@server/webpath to profile in nextcloud
+username="username"
+password="password"
 colon=":" #no need to change
 #Main
-cd "$localprofile"
-echo "Syncing $localprofile with $serverpath"
-#Set me to only user readable (passwords are here, file is synced world readable)
+cd "$localpath"
+echo "Syncing $localpath with $serverpath"
+#Set me to only user readable (passwords are here, file is synced from nextcloud "world readable" - not good, so change permissions here!)
 chmod 0700 $0
 #First check if server ist up, or if to wait
 ((count = 10))                            # Maximum number to try.
@@ -35,9 +31,20 @@ if [[ $rc -eq 0 ]] ; then                  # Make final determination.
     echo "Server is up."
 else
     echo "Server offline, giving up."
+    notify-send "Nextcloud-Sync $myidentitiy: Server offline, giving up."
     exit 1
 fi
+#leider lassen sich beide sync-logs nicht in diesen pfad syncen. Grund: wenn ein anderer Rechner offline geht, dabei das log zuletzt
+#geschrieben hat, und dieser das log vor Aufruf neu setzt, dann gibt es zwei neue versionen. eine davon ist "conflicting".
+#Also aus dem Pfad heraus verschoben.
 echo "Last Sync via $0 at" > "$logfile"
-date >> "$logfile"
-nextcloudcmd --trust -h $localprofile $protocol$username$colon$password$serverpath >> "$logfile" 2>&1
-echo "Sync finished. You may close window if it does not automatic."
+date >> $logfile
+nextcloudcmd --trust -h $localpath $protocol$username$colon$password$serverpath >> "$logfile" 2>&1
+rc=$?
+if [[ $rc -eq 0 ]] ; then
+    echo "Nextcloud-Sync: finished successful."
+    notify-send "Nextcloud-Sync $myidentitiy: Sync finished successful."
+else
+    echo "Nextcloud-Sync: Error, please check Logfile $logfile"
+    notify-send "Nextcloud-Sync $myidentitiy: Error."
+fi
